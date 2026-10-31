@@ -39,7 +39,11 @@ def test_translate_permission_denied() -> None:
 
 
 def test_translate_rate_limit_exceeded() -> None:
-    exc = RateLimitExceededException(status=403, data={"message": "API rate limit exceeded"}, headers={"x-ratelimit-remaining": "0"})
+    exc = RateLimitExceededException(
+        status=403,
+        data={"message": "API rate limit exceeded"},
+        headers={"x-ratelimit-remaining": "0"},
+    )
     failure = translate_github_exception(exc, "get_pull")
     assert isinstance(failure, RateLimited)
     assert failure.retryable is True
@@ -47,7 +51,9 @@ def test_translate_rate_limit_exceeded() -> None:
 
 
 def test_translate_429_rate_limit_with_retry_after() -> None:
-    exc = GithubException(status=429, data={"message": "Too many requests"}, headers={"retry-after": "60"})
+    exc = GithubException(
+        status=429, data={"message": "Too many requests"}, headers={"retry-after": "60"}
+    )
     failure = translate_github_exception(exc, "get_contents")
     assert isinstance(failure, RateLimited)
     assert failure.retry_after_seconds == 60

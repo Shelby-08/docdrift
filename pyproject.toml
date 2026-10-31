@@ -28,6 +28,7 @@ packages = ["src/docsentry"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 
 [tool.mypy]
 strict = true

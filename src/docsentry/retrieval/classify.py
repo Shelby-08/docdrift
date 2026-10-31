@@ -5,26 +5,28 @@ Category = Literal["source", "doc", "config", "other"]
 
 DOC_EXTENSIONS = frozenset({".md", ".mdx", ".markdown", ".rst", ".adoc"})
 DOC_BASENAMES = frozenset({"README", "CHANGELOG", "CONTRIBUTING"})
-SOURCE_EXTENSIONS = frozenset({
-    ".py",
-    ".ts",
-    ".tsx",
-    ".js",
-    ".jsx",
-    ".mjs",
-    ".cjs",
-    ".go",
-    ".java",
-    ".rs",
-    ".rb",
-    ".php",
-    ".cs",
-    ".kt",
-    ".swift",
-    ".c",
-    ".h",
-    ".cpp",
-})
+SOURCE_EXTENSIONS = frozenset(
+    {
+        ".py",
+        ".ts",
+        ".tsx",
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs",
+        ".go",
+        ".java",
+        ".rs",
+        ".rb",
+        ".php",
+        ".cs",
+        ".kt",
+        ".swift",
+        ".c",
+        ".h",
+        ".cpp",
+    }
+)
 CONFIG_EXTENSIONS = frozenset({".json", ".yaml", ".yml", ".toml", ".ini", ".cfg"})
 IGNORED_SEGMENTS = frozenset({"node_modules", "vendor", ".git", "dist", "build", ".venv"})
 
