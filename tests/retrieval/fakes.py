@@ -96,6 +96,10 @@ class FakeRepo:
         self.pr = pr or FakePullRequest()
         self.merge_base_sha = merge_base_sha
         self.compare_calls: list[tuple[str, str]] = []
+        self.contents_map: dict[tuple[str, str], Any] = {}
+        self.contents_calls: list[tuple[str, str]] = []
+        self.tree_map: dict[tuple[str, bool], Any] = {}
+        self.tree_calls: list[tuple[str, bool]] = []
 
     def get_pull(self, number: int) -> FakePullRequest:
         return self.pr
@@ -103,6 +107,74 @@ class FakeRepo:
     def compare(self, base: str, head: str) -> FakeComparison:
         self.compare_calls.append((base, head))
         return FakeComparison(self.merge_base_sha)
+
+    def get_contents(self, path: str, ref: str = "") -> Any:
+        self.contents_calls.append((path, ref))
+        if (path, ref) in self.contents_map:
+            val = self.contents_map[(path, ref)]
+            if isinstance(val, Exception):
+                raise val
+            return val
+        from github import UnknownObjectException
+
+        raise UnknownObjectException(404, {"message": "Not Found"}, {})
+
+    def get_git_tree(self, sha: str, recursive: bool = False) -> Any:
+        self.tree_calls.append((sha, recursive))
+        if (sha, recursive) in self.tree_map:
+            val = self.tree_map[(sha, recursive)]
+            if isinstance(val, Exception):
+                raise val
+            return val
+        from github import UnknownObjectException
+
+        raise UnknownObjectException(404, {"message": "Tree Not Found"}, {})
+
+
+class FakeContentFile:
+    def __init__(
+        self,
+        path: str,
+        content: str | bytes | None = None,
+        encoding: str = "base64",
+        size: int = 10,
+        sha: str = "c" * 40,
+        file_type: str = "file",
+    ) -> None:
+        self.path = path
+        self.content = content
+        self.encoding = encoding
+        self.size = size
+        self.sha = sha
+        self.type = file_type
+
+
+class FakeGitTreeElement:
+    def __init__(
+        self,
+        path: str,
+        element_type: str = "blob",
+        mode: str = "100644",
+        sha: str = "d" * 40,
+        size: int | None = 100,
+    ) -> None:
+        self.path = path
+        self.type = element_type
+        self.mode = mode
+        self.sha = sha
+        self.size = size
+
+
+class FakeGitTree:
+    def __init__(
+        self,
+        tree: list[FakeGitTreeElement],
+        truncated: bool = False,
+        sha: str = "e" * 40,
+    ) -> None:
+        self.tree = tree
+        self.truncated = truncated
+        self.sha = sha
 
 
 class FakeGithub:
