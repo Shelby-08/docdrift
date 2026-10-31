@@ -137,7 +137,8 @@ approve the permission change on the installation (reinstall or approve). Webhoo
 | `DOCSENTRY_PUBLISH_ENABLED` | `true` | `false` = analyse only, no GitHub writes |
 | `AI_REVIEW_ENABLED` | `false` | opt-in; `false` = zero Ollama requests |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | loopback IP literal only (`127.0.0.1` or `[::1]`) |
-| `OLLAMA_MODEL` | (empty) | required when AI is enabled; empty keeps AI off and logs a warning |
+| `AI_BACKEND` | `ollama` | `ollama` or `llama_cpp` (local llama.cpp server, OpenAI-compatible API) |
+| `OLLAMA_MODEL` | (empty) | required for the `ollama` backend; optional for `llama_cpp` |
 | `OLLAMA_TIMEOUT_SECONDS` | `120` | 1..300 |
 | `OLLAMA_NUM_CTX` | `8192` | 1..16384 |
 | `AI_REVIEW_TOTAL_BUDGET_SECONDS` | `180` | 1..600 across all batches |
@@ -161,9 +162,14 @@ and that the model fits your RAM/VRAM (large MoE models are mostly offloaded to 
 slow), then set `OLLAMA_MODEL=<tag>` and `AI_REVIEW_ENABLED=true`. Optionally keep the model warm
 with Ollama's `OLLAMA_KEEP_ALIVE`. Model output is non-deterministic and advisory.
 
-Dev machine status: Ollama is installed but has **no models pulled**, so the live `/api/chat`
-contract (JSON-schema `format`, `think`) is **unverified**. `think` is never sent; the client falls
-back from schema `format` to `"json"` on HTTP 400.
+Dev machine status: the `llama_cpp` backend was verified live against Qwen3.6-35B-A3B served by
+llama.cpp (`llama-server` on `127.0.0.1:8080`, run `D:\modelsun-qwen.bat`): one finding reviewed,
+status `completed`, ~55 s. Set `AI_REVIEW_ENABLED=true`, `AI_BACKEND=llama_cpp`,
+`OLLAMA_BASE_URL=http://127.0.0.1:8080`, and raise `OLLAMA_TIMEOUT_SECONDS` if batches are slow.
+The `llama_cpp` request sends `response_format` JSON schema (falls back to `json_object` on HTTP 400)
+and `enable_thinking=false`. The **Ollama backend** was not verified live: importing the same GGUF
+into Ollama 0.40.11 crashed its CUDA backend on the RTX 5060 (flash-attention kernel init), so use
+`llama_cpp` on this machine. The variable `OLLAMA_BASE_URL` is used for both backends.
 
 ### Replay and evaluate (offline, read-only git)
 ```

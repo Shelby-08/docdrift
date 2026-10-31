@@ -32,8 +32,10 @@ def make_opener() -> Opener:
 
 
 class OllamaClient:
+    PATH = "/api/chat"
+
     def __init__(self, base_url: str, timeout: float, opener: Opener | None = None) -> None:
-        self._url = validate_ollama_base_url(base_url) + "/api/chat"  # raises before any request
+        self._url = validate_ollama_base_url(base_url) + self.PATH  # raises before any request
         self._timeout = timeout
         self._opener = opener or make_opener()
 
@@ -71,11 +73,14 @@ class OllamaClient:
             env = json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, ValueError):
             raise OllamaError("ollama_invalid_response") from None
-        msg = env.get("message") if isinstance(env, dict) else None
-        content = msg.get("content") if isinstance(msg, dict) else None
+        content = self._extract(env)
         if not isinstance(content, str):
             raise OllamaError("ollama_invalid_response")
         return content
+
+    def _extract(self, env: Any) -> object:
+        msg = env.get("message") if isinstance(env, dict) else None
+        return msg.get("content") if isinstance(msg, dict) else None
 
     def chat(
         self,
@@ -98,4 +103,44 @@ class OllamaClient:
             if exc.status != 400:
                 raise
         body["format"] = "json"  # server rejected the schema form: fall back once
+        return self._post(body)
+
+
+class LlamaCppClient(OllamaClient):
+    """Same loopback boundary, for a local llama.cpp server (OpenAI-compatible chat API)."""
+
+    PATH = "/v1/chat/completions"
+
+    def _extract(self, env: Any) -> object:
+        choices = env.get("choices") if isinstance(env, dict) else None
+        first = choices[0] if isinstance(choices, list) and choices else None
+        msg = first.get("message") if isinstance(first, dict) else None
+        return msg.get("content") if isinstance(msg, dict) else None
+
+    def chat(
+        self,
+        model: str,
+        messages: list[dict[str, str]],
+        schema: dict[str, object],
+        num_ctx: int,
+        num_predict: int,
+    ) -> str:
+        body: dict[str, Any] = {
+            "model": model or "local",
+            "messages": messages,
+            "stream": False,
+            "max_tokens": num_predict,
+            "temperature": 0,
+            "chat_template_kwargs": {"enable_thinking": False},
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": "review", "strict": True, "schema": schema},
+            },
+        }
+        try:
+            return self._post(body)
+        except OllamaError as exc:
+            if exc.status != 400:
+                raise
+        body["response_format"] = {"type": "json_object"}
         return self._post(body)

@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     # Stage 4: optional local advisory AI (Ollama on loopback only)
     ai_review_enabled: bool = Field(default=False)
     ollama_base_url: str = Field(default="http://127.0.0.1:11434")
+    ai_backend: Literal["ollama", "llama_cpp"] = "ollama"
     ollama_model: str = Field(default="", max_length=200)
     ollama_timeout_seconds: int = Field(default=120, ge=1, le=300)
     ollama_num_ctx: int = Field(default=8192, ge=1, le=16384)
@@ -81,6 +82,8 @@ class Settings(BaseSettings):
     @property
     def ai_effective(self) -> bool:
         """AI runs only when enabled AND a model tag is configured (fail closed)."""
+        if self.ai_backend == "llama_cpp":
+            return self.ai_review_enabled  # llama.cpp serves one model; the tag is optional
         return self.ai_review_enabled and bool(self.ollama_model.strip())
 
 

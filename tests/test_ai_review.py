@@ -429,3 +429,49 @@ def test_prompt_never_contains_full_files_or_patches() -> None:
     review(FINDING, fc)
     sent = json.dumps(fc.messages)
     assert "DEFAULT_RETRIES = 5\\n" not in sent and "@@" not in sent and "/Users/" not in sent
+
+
+# ---- llama.cpp backend (OpenAI-compatible chat API, same loopback boundary) ----
+def oa_env(content: Any = "{}") -> bytes:
+    return json.dumps(
+        {"choices": [{"message": {"role": "assistant", "content": content}}]}
+    ).encode()
+
+
+def test_llama_cpp_request_shape_and_extraction() -> None:
+    from docsentry.ai_review.ollama import LlamaCppClient
+
+    op = FakeOpener(FakeResp(oa_env('{"a":1}')))
+    c = LlamaCppClient("http://127.0.0.1:8080", 9, op)  # type: ignore[arg-type]
+    assert c.chat("", [{"role": "user", "content": "q"}], {"t": "object"}, 8192, 300) == '{"a":1}'
+    req, timeout = op.requests[0]
+    assert req.full_url == "http://127.0.0.1:8080/v1/chat/completions" and timeout == 9
+    body = json.loads(req.data)  # type: ignore[arg-type]
+    assert body["stream"] is False and body["max_tokens"] == 300 and body["temperature"] == 0
+    assert body["response_format"]["type"] == "json_schema" and "tools" not in body
+    assert body["chat_template_kwargs"] == {"enable_thinking": False}
+
+
+def test_llama_cpp_fallback_and_failures() -> None:
+    from docsentry.ai_review.ollama import LlamaCppClient
+
+    op = FakeOpener(http_err(400), FakeResp(oa_env("{}")))
+    c = LlamaCppClient("http://127.0.0.1:8080", 9, op)  # type: ignore[arg-type]
+    assert c.chat("m", [], {}, 1, 1) == "{}"
+    assert json.loads(op.requests[1][0].data)["response_format"] == {"type": "json_object"}  # type: ignore[arg-type]
+    for bad in (b'{"choices": []}', b'{"choices": [{"message": {"content": 3}}]}', b"{}"):
+        with pytest.raises(OllamaError) as ei:
+            LlamaCppClient("http://127.0.0.1:8080", 9, FakeOpener(FakeResp(bad))).chat(
+                "m", [], {}, 1, 1
+            )  # type: ignore[arg-type]
+        assert ei.value.code == "ollama_invalid_response"
+    with pytest.raises(UnsafeOllamaUrl):
+        LlamaCppClient("http://example.com:8080", 9)
+
+
+def test_llama_cpp_backend_settings_and_service() -> None:
+    s = settings(ai_backend="llama_cpp", ollama_model="", ollama_base_url="http://127.0.0.1:8080")
+    assert s.ai_effective is True
+    assert settings(ai_backend="llama_cpp", ai_review_enabled=False).ai_effective is False
+    out = asyncio.run(OllamaAIReviewer(s, FakeClient()).review(FINDING))  # type: ignore[arg-type]
+    assert out.status == AIReviewStatus.COMPLETED
