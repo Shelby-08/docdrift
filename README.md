@@ -163,7 +163,7 @@ slow), then set `OLLAMA_MODEL=<tag>` and `AI_REVIEW_ENABLED=true`. Optionally ke
 with Ollama's `OLLAMA_KEEP_ALIVE`. Model output is non-deterministic and advisory.
 
 Dev machine status: the `llama_cpp` backend was verified live against Qwen3.6-35B-A3B served by
-llama.cpp (`llama-server` on `127.0.0.1:8080`, run `D:\modelsun-qwen.bat`): one finding reviewed,
+llama.cpp (`llama-server` on `127.0.0.1:8080`, started with `D:/models/run-qwen.bat`): one finding reviewed,
 status `completed`, ~55 s. Set `AI_REVIEW_ENABLED=true`, `AI_BACKEND=llama_cpp`,
 `OLLAMA_BASE_URL=http://127.0.0.1:8080`, and raise `OLLAMA_TIMEOUT_SECONDS` if batches are slow.
 The `llama_cpp` request sends `response_format` JSON schema (falls back to `json_object` on HTTP 400)
