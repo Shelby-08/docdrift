@@ -30,11 +30,12 @@ Live GitHub and live Ollama behaviour is **UNVERIFIED** (see the end).
 - PyGithub 2.8.1: `Repository.create_check_run(name, head_sha, details_url, external_id, status,
   started_at, conclusion, completed_at, output, actions)`, `CheckRun.edit(...)` with the same fields,
   `Commit.get_check_runs(check_name, status, filter)`.
-- Ollama: installed, `/api/tags` returned no models, so the `/api/chat` contract was not probed.
+- llama.cpp backend (`/v1/chat/completions`): verified live with Qwen3.6-35B-A3B, schema-constrained JSON accepted, review `completed`.
+- Ollama backend (`/api/chat`): GGUF imported as `qwen-local`, but Ollama 0.40.11's CUDA backend crashed on load (RTX 5060), so the contract is not verified live.
 
 ## UNVERIFIED (needs a live installation)
 
 - Checks: write approval and real Check Run creation and updates.
 - Annotation rendering on lines outside the PR diff, and whether later edits append annotations.
 - Fork PR behaviour.
-- Ollama JSON-schema `format`, `think`, and real model quality.
+- Ollama backend JSON-schema `format`; review quality at scale (only one item reviewed live).

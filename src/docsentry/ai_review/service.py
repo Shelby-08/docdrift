@@ -12,7 +12,7 @@ from docsentry.ai_review.models import (
     AIReviewResult,
     AIReviewStatus,
 )
-from docsentry.ai_review.ollama import OllamaClient, OllamaError
+from docsentry.ai_review.ollama import LlamaCppClient, OllamaClient, OllamaError
 from docsentry.ai_review.prompts import build_messages, schema
 from docsentry.ai_review.validator import ValidationFailure, validate_batch
 from docsentry.config import Settings
@@ -79,7 +79,8 @@ class OllamaAIReviewer:
         batches, dropped = build_batches(
             result, s.ai_review_max_batch_items, s.ai_review_max_batch_chars
         )
-        client = self._client or OllamaClient(s.ollama_base_url, s.ollama_timeout_seconds)
+        cls = LlamaCppClient if s.ai_backend == "llama_cpp" else OllamaClient
+        client = self._client or cls(s.ollama_base_url, s.ollama_timeout_seconds)
         done: list[AIItemAssessment] = []
         failures: list[str] = []
         ran = 0
