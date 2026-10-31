@@ -5,7 +5,7 @@
 DocDrift is a CI check that finds the documentation sentences a pull request just made wrong
 (renamed flags, changed defaults, changed parameters, removed features). It points to the
 exact sentence and the exact code change, and suggests a corrected sentence.
-A local open-weight model (**Qwen3.6 35B-A3B via Ollama**) judges each candidate sentence.
+A local open-weight model (**Qwen3.6 35B-A3B, served by llama.cpp**) judges each candidate sentence.
 
 Built by **Team OS-hit!** for Hacktoberfest 2026 Hack Day (Problem 05).
 

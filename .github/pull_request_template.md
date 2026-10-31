@@ -3,7 +3,7 @@
 
 ## Models the product uses in this PR
 <!-- Mention the open-source or open-weight AI models used in this implementation.
-     Example: qwen3.6:35b via Ollama, or "none". -->
+     Example: Qwen3.6-35B-A3B via llama.cpp, or "none". -->
 
 ## AI coding assistants that helped write it
 <!-- Mention the AI coding assistants used during development.
