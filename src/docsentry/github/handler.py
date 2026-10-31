@@ -41,7 +41,6 @@ async def safe_run_handler(
                 "fields": {
                     "delivery_id": delivery_id,
                     "error_type": type(exc).__name__,
-                    "error": str(exc),
                 }
             },
         )
