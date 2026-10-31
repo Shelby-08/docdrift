@@ -13,6 +13,7 @@ class PullRequestEventContext:
     base_sha: str
     head_sha: str
     title: str
+    delivery_id: str = ""
 
 
 PullRequestHandler = Callable[[PullRequestEventContext], Awaitable[None]]
