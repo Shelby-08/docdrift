@@ -12,9 +12,10 @@ MAX_RESPONSE_BYTES = 1_000_000
 
 
 class OllamaError(Exception):
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str, status: int | None = None) -> None:
         super().__init__(code)
         self.code = code
+        self.status = status
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -55,7 +56,7 @@ class OllamaClient:
                 raise OllamaError("ollama_model_unavailable") from None
             if exc.code in (500, 503):
                 raise OllamaError("ollama_resource_unavailable") from None
-            raise OllamaError("ollama_http_error") from None
+            raise OllamaError("ollama_http_error", exc.code) from None
         except TimeoutError:
             raise OllamaError("ollama_timeout") from None
         except urllib.error.URLError as exc:
@@ -94,7 +95,7 @@ class OllamaClient:
         try:
             return self._post(body)
         except OllamaError as exc:
-            if exc.code != "ollama_http_error":
+            if exc.status != 400:
                 raise
         body["format"] = "json"  # server rejected the schema form: fall back once
         return self._post(body)
