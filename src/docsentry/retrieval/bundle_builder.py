@@ -44,9 +44,7 @@ def build_pull_request_bundle(
     # 1. Fetch pull request & base context
     repo, pr, context = fetch_pull_request(gh, event)
     if context.superseded_event:
-        warnings.append(
-            f"superseded_event: bundle built for current API head {context.head_sha}"
-        )
+        warnings.append(f"superseded_event: bundle built for current API head {context.head_sha}")
     if should_abort():
         raise JobSuperseded()
 

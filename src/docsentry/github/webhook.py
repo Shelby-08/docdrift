@@ -77,6 +77,7 @@ class WebhookHandler:
 
         # Background task
         import dataclasses
+
         result = dataclasses.replace(result, delivery_id=delivery_id or "")
         bg = BackgroundTasks()
         bg.add_task(safe_run_handler, self.handler, result, delivery_id, self.logger)

@@ -48,9 +48,7 @@ class BundleStore:
     def has_succeeded_head(self, repo_id: int, pr_number: int, head_sha: str) -> bool:
         return (repo_id, pr_number, head_sha.lower()) in self._succeeded_heads
 
-    def record_succeeded_head(
-        self, repo_id: int, pr_number: int, head_sha: str
-    ) -> None:
+    def record_succeeded_head(self, repo_id: int, pr_number: int, head_sha: str) -> None:
         self._succeeded_heads.add((repo_id, pr_number, head_sha.lower()))
 
     def commit_result(

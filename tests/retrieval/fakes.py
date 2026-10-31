@@ -72,7 +72,7 @@ class FakePullRequest:
         self.base = FakeRef("main", base_sha)
         self.head = FakeRef("feature", head_sha)
         self.changed_files = changed_files
-        self._files = files or [FakeFile("file1.py")]
+        self._files = files if files is not None else [FakeFile("file1.py")]
         self.draft = draft
         self.state = state
         self.paginated_list = FakePaginatedList(self._files)

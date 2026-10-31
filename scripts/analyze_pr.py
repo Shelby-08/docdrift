@@ -1,133 +1,81 @@
 #!/usr/bin/env python3
-"""Deterministic documentation drift analysis CLI.
+"""Manual live check of the Stage 3 analysis engine against a real pull request.
 
 Usage:
-    python scripts/analyze_pr.py --offline"""
+    python scripts/analyze_pr.py --installation-id 123 --owner OWNER --repo NAME --pr 7 \
+        [--out result.json] [--include-texts]
+
+Performs GET requests only. Prints COUNTS ONLY. With --out, writes the JSON result under
+.docsentry-out/. NOT part of the test suite.
+"""
 
 import argparse
 import json
 import sys
+from collections import Counter
+from pathlib import Path
 
-from docsentry.intelligence.engine import analyze_bundle_drift
-from docsentry.retrieval.models import (
-    ChangedFile,
-    FileSnapshot,
-    FileVersion,
-    PullRequestBundle,
-    PullRequestContext,
-    RepositoryFileEntry,
-    RepositoryFileIndex,
-)
+from docsentry.config import load_settings
+from docsentry.intelligence.pipeline import analyze_bundle
+from docsentry.intelligence.reporting.json_exporter import to_json
+from docsentry.models import PullRequestEventContext
+from docsentry.retrieval.auth import GitHubAuthService
+from docsentry.retrieval.bundle_builder import build_pull_request_bundle
+from docsentry.retrieval.snapshots import GitHubFileReader
 
-
-def make_sample_bundle() -> PullRequestBundle:
-    sha_base = "a" * 40
-    sha_head = "b" * 40
-    sha_blob = "1" * 40
-
-    ctx = PullRequestContext(
-        repo_id=101,
-        repo_full_name="test-org/test-repo",
-        pr_number=1,
-        base_ref="main",
-        base_sha=sha_base,
-        head_ref="feature",
-        head_sha=sha_head,
-        head_repo_full_name="test-org/test-repo",
-        head_repo_fork=False,
-        is_cross_repository=False,
-        merge_base_sha=sha_base,
-        superseded_event=False,
-    )
-
-    changed = [
-        ChangedFile(
-            filename="docs/arch.md",
-            status="modified",
-            additions=5,
-            deletions=1,
-            changes=6,
-            blob_sha=sha_blob,
-            category="doc",
-        ),
-        ChangedFile(
-            filename="src/core.py",
-            status="modified",
-            additions=10,
-            deletions=2,
-            changes=12,
-            blob_sha=sha_blob,
-            category="source",
-        ),
-    ]
-
-    snapshots = [
-        FileSnapshot(
-            path="docs/arch.md",
-            category="doc",
-            base=FileVersion(
-                path="docs/arch.md",
-                commit_sha=sha_base,
-                text="# Documentation\n\nUse `old_handler` for processing requests.\n",
-                byte_size=55,
-            ),
-            head=FileVersion(
-                path="docs/arch.md",
-                commit_sha=sha_head,
-                text="# Documentation\n\nUse `old_handler` for processing requests.\n",
-                byte_size=55,
-            ),
-        ),
-        FileSnapshot(
-            path="src/core.py",
-            category="source",
-            base=FileVersion(
-                path="src/core.py",
-                commit_sha=sha_base,
-                text="def old_handler(): pass\n",
-                byte_size=24,
-            ),
-            head=FileVersion(
-                path="src/core.py",
-                commit_sha=sha_head,
-                text="def new_handler(param: str): return param\n",
-                byte_size=42,
-            ),
-        ),
-    ]
-
-    return PullRequestBundle(
-        context=ctx,
-        changed_files=changed,
-        changed_files_complete=True,
-        reported_changed_files=2,
-        snapshots=snapshots,
-        skipped_files=[],
-        base_index=RepositoryFileIndex(commit_sha=sha_base, entries=[], complete=True, incomplete_reasons=[]),
-        head_index=RepositoryFileIndex(commit_sha=sha_head, entries=[], complete=True, incomplete_reasons=[]),
-        errors=[],
-        warnings=[],
-        retrieved_at="2026-11-01T00:00:00Z",
-    )
+OUT_DIR = Path(".docsentry-out")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Analyze PullRequestBundle drift")
-    parser.add_argument("--offline", action="store_true", default=True, help="Run offline sample analysis")
-    parser.parse_args()
+    parser = argparse.ArgumentParser(description="Analyze a pull request (live, read-only)")
+    parser.add_argument("--installation-id", type=int, required=True)
+    parser.add_argument("--owner", type=str, required=True)
+    parser.add_argument("--repo", type=str, required=True)
+    parser.add_argument("--pr", type=int, required=True)
+    parser.add_argument("--out", type=str, default=None, help="file name under .docsentry-out/")
+    parser.add_argument("--include-texts", action="store_true")
+    args = parser.parse_args()
 
-    bundle = make_sample_bundle()
-    report = analyze_bundle_drift(bundle)
+    settings = load_settings()
+    client = GitHubAuthService(settings).client_for_installation(args.installation_id)
+    event = PullRequestEventContext(
+        action="synchronize",
+        owner=args.owner,
+        repo=args.repo,
+        repo_id=0,
+        pr_number=args.pr,
+        installation_id=args.installation_id,
+        base_sha="0" * 40,
+        head_sha="0" * 40,
+        title="",
+        delivery_id="cli-analyze",
+    )
+    bundle = build_pull_request_bundle(client, event, settings)
+    repo = client.get_repo(f"{args.owner}/{args.repo}")
+    result = analyze_bundle(bundle, GitHubFileReader(repo, settings), settings)
 
-    print("=== Drift Analysis Report ===")
-    print(f"Summary: {report.summary}")
-    print(f"Critical findings: {report.critical_count}")
-    print(f"Warning findings: {report.warning_count}")
-    print(f"Info findings: {report.info_count}")
-    print("Findings details:")
-    for f in report.findings:
-        print(f"  [{f.severity.upper()}] {f.title}: {f.explanation}")
-        print(f"    Remediation: {f.remediation}")
+    summary = {
+        "complete": result.complete,
+        "incomplete_reasons": list(result.incomplete_reasons),
+        "findings_by_evidence_status": dict(
+            Counter(f.evidence_status.value for f in result.findings)
+        ),
+        "findings_by_temporal_status": dict(
+            Counter(f.temporal_status.value for f in result.findings)
+        ),
+        "skipped_by_reason": dict(Counter(s.reason for s in result.skipped_files)),
+        "ai_review_items": len(result.ai_review_input.items),
+        "ai_review_omitted": result.ai_review_input.omitted_count,
+    }
+    print(json.dumps(summary, indent=2, sort_keys=True))
+
+    if args.out:
+        name = Path(args.out).name
+        OUT_DIR.mkdir(exist_ok=True)
+        target = OUT_DIR / name
+        target.write_text(to_json(result, include_texts=args.include_texts), encoding="utf-8")
+        print(f"wrote {target}")
+    sys.exit(0)
 
 
 if __name__ == "__main__":

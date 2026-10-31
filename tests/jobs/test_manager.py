@@ -1,6 +1,5 @@
+import asyncio
 from typing import Any
-
-import pytest
 
 from docsentry.config import Settings
 from docsentry.jobs.dedup import DeliveryTracker
@@ -53,17 +52,23 @@ def make_ctx(
 
 def make_dummy_bundle(head_sha: str = SHA_HEAD) -> PullRequestBundle:
     ctx = PullRequestContext(
-        repo_id=100,
-        repo_full_name="org/repo",
-        pr_number=42,
+        delivery_id="d1",
+        installation_id=10,
+        owner="org",
+        repository="repo",
+        repository_id=100,
+        pull_number=42,
+        title="PR title",
+        html_url="https://github.com/org/repo/pull/42",
         base_ref="main",
-        base_sha=SHA_BASE,
         head_ref="feat",
+        base_sha=SHA_BASE,
         head_sha=head_sha,
-        head_repo_full_name="org/repo",
-        head_repo_fork=False,
-        is_cross_repository=False,
         merge_base_sha=SHA_BASE,
+        state="open",
+        is_draft=False,
+        event_head_sha=head_sha,
+        superseded_event=False,
     )
     return PullRequestBundle(
         context=ctx,
@@ -84,118 +89,130 @@ def make_dummy_bundle(head_sha: str = SHA_HEAD) -> PullRequestBundle:
     )
 
 
-@pytest.mark.asyncio
-async def test_job_manager_success() -> None:
-    store = BundleStore()
-    tracker = DeliveryTracker()
-    settings = make_settings()
-    bundle = make_dummy_bundle()
+def test_job_manager_success() -> None:
+    async def _test() -> None:
+        store = BundleStore()
+        tracker = DeliveryTracker()
+        settings = make_settings()
+        bundle = make_dummy_bundle()
 
-    def fake_retrieve(*args: Any, **kwargs: Any) -> PullRequestBundle:
-        return bundle
+        def fake_retrieve(*args: Any, **kwargs: Any) -> PullRequestBundle:
+            return bundle
 
-    mgr = JobManager(FakeAuth(), fake_retrieve, store, tracker, settings)  # type: ignore[arg-type]
-    ctx = make_ctx()
+        mgr = JobManager(FakeAuth(), fake_retrieve, store, tracker, settings)  # type: ignore[arg-type]
+        ctx = make_ctx()
 
-    await mgr.submit(ctx)
+        await mgr.submit(ctx)
 
-    rec = store.get_record((100, 42))
-    assert rec is not None
-    assert rec.status == "succeeded"
-    assert rec.delivery_id == "d1"
-    assert store.get_bundle((100, 42)) == bundle
-    assert tracker.get_state("d1") == "succeeded"
+        rec = store.get_record((100, 42))
+        assert rec is not None
+        assert rec.status == "succeeded"
+        assert rec.delivery_id == "d1"
+        assert store.get_bundle((100, 42)) == bundle
+        assert tracker.get_state("d1") == "succeeded"
 
-
-@pytest.mark.asyncio
-async def test_job_manager_duplicate_delivery() -> None:
-    store = BundleStore()
-    tracker = DeliveryTracker()
-    settings = make_settings()
-    retrieve_calls = 0
-
-    def fake_retrieve(*args: Any, **kwargs: Any) -> PullRequestBundle:
-        nonlocal retrieve_calls
-        retrieve_calls += 1
-        return make_dummy_bundle()
-
-    mgr = JobManager(FakeAuth(), fake_retrieve, store, tracker, settings)  # type: ignore[arg-type]
-    ctx = make_ctx("d_same")
-
-    await mgr.submit(ctx)
-    await mgr.submit(ctx)
-
-    assert retrieve_calls == 1
+    asyncio.run(_test())
 
 
-@pytest.mark.asyncio
-async def test_job_manager_duplicate_head_sha() -> None:
-    store = BundleStore()
-    tracker = DeliveryTracker()
-    settings = make_settings()
-    mgr = JobManager(FakeAuth(), lambda *args, **kw: make_dummy_bundle(), store, tracker, settings)  # type: ignore[arg-type]
+def test_job_manager_duplicate_delivery() -> None:
+    async def _test() -> None:
+        store = BundleStore()
+        tracker = DeliveryTracker()
+        settings = make_settings()
+        retrieve_calls = 0
 
-    await mgr.submit(make_ctx("d1", head_sha=SHA_HEAD))
-    rec1 = store.get_record((100, 42))
-    assert rec1 is not None and rec1.status == "succeeded"
+        def fake_retrieve(*args: Any, **kwargs: Any) -> PullRequestBundle:
+            nonlocal retrieve_calls
+            retrieve_calls += 1
+            return make_dummy_bundle()
 
-    await mgr.submit(make_ctx("d2", head_sha=SHA_HEAD))
-    rec2 = store.get_record((100, 42))
-    assert rec2 is not None and rec2.status == "duplicate"
+        mgr = JobManager(FakeAuth(), fake_retrieve, store, tracker, settings)  # type: ignore[arg-type]
+        ctx = make_ctx("d_same")
 
+        await mgr.submit(ctx)
+        await mgr.submit(ctx)
 
-@pytest.mark.asyncio
-async def test_job_manager_retries_transient_failure() -> None:
-    store = BundleStore()
-    tracker = DeliveryTracker()
-    settings = make_settings(max_job_attempts=2)
-    attempts = 0
-    sleeps: list[float] = []
+        assert retrieve_calls == 1
 
-    async def fake_sleep(dur: float) -> None:
-        sleeps.append(dur)
-
-    def fake_retrieve(*args: Any, **kwargs: Any) -> PullRequestBundle:
-        nonlocal attempts
-        attempts += 1
-        if attempts == 1:
-            raise TransientFailure(operation="read", message="timeout")
-        return make_dummy_bundle()
-
-    mgr = JobManager(
-        FakeAuth(),  # type: ignore[arg-type]
-        fake_retrieve,
-        store,
-        tracker,
-        settings,
-        sleep=fake_sleep,
-    )
-    await mgr.submit(make_ctx())
-
-    rec = store.get_record((100, 42))
-    assert rec is not None and rec.status == "succeeded"
-    assert attempts == 2
-    assert sleeps == [1.0]
+    asyncio.run(_test())
 
 
-@pytest.mark.asyncio
-async def test_job_manager_non_retryable_failure() -> None:
-    store = BundleStore()
-    tracker = DeliveryTracker()
-    settings = make_settings(max_job_attempts=3)
-    attempts = 0
+def test_job_manager_duplicate_head_sha() -> None:
+    async def _test() -> None:
+        store = BundleStore()
+        tracker = DeliveryTracker()
+        settings = make_settings()
+        mgr = JobManager(
+            FakeAuth(), lambda *args, **kw: make_dummy_bundle(), store, tracker, settings
+        )  # type: ignore[arg-type]
 
-    def fake_retrieve(*args: Any, **kwargs: Any) -> PullRequestBundle:
-        nonlocal attempts
-        attempts += 1
-        raise AuthenticationFailure(message="bad key")
+        await mgr.submit(make_ctx("d1", head_sha=SHA_HEAD))
+        rec1 = store.get_record((100, 42))
+        assert rec1 is not None and rec1.status == "succeeded"
 
-    mgr = JobManager(FakeAuth(), fake_retrieve, store, tracker, settings)  # type: ignore[arg-type]
-    await mgr.submit(make_ctx())
+        await mgr.submit(make_ctx("d2", head_sha=SHA_HEAD))
+        rec2 = store.get_record((100, 42))
+        assert rec2 is not None and rec2.status == "duplicate"
 
-    rec = store.get_record((100, 42))
-    assert rec is not None
-    assert rec.status == "failed"
-    assert rec.error_code == "auth_failed"
-    assert attempts == 1
-    assert tracker.get_state("d1") == "failed"
+    asyncio.run(_test())
+
+
+def test_job_manager_retries_transient_failure() -> None:
+    async def _test() -> None:
+        store = BundleStore()
+        tracker = DeliveryTracker()
+        settings = make_settings(max_job_attempts=2)
+        attempts = 0
+        sleeps: list[float] = []
+
+        async def fake_sleep(dur: float) -> None:
+            sleeps.append(dur)
+
+        def fake_retrieve(*args: Any, **kwargs: Any) -> PullRequestBundle:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise TransientFailure(operation="read", message="timeout")
+            return make_dummy_bundle()
+
+        mgr = JobManager(
+            FakeAuth(),  # type: ignore[arg-type]
+            fake_retrieve,
+            store,
+            tracker,
+            settings,
+            sleep=fake_sleep,
+        )
+        await mgr.submit(make_ctx())
+
+        rec = store.get_record((100, 42))
+        assert rec is not None and rec.status == "succeeded"
+        assert attempts == 2
+        assert sleeps == [1.0]
+
+    asyncio.run(_test())
+
+
+def test_job_manager_non_retryable_failure() -> None:
+    async def _test() -> None:
+        store = BundleStore()
+        tracker = DeliveryTracker()
+        settings = make_settings(max_job_attempts=3)
+        attempts = 0
+
+        def fake_retrieve(*args: Any, **kwargs: Any) -> PullRequestBundle:
+            nonlocal attempts
+            attempts += 1
+            raise AuthenticationFailure(operation="auth", message="bad key")
+
+        mgr = JobManager(FakeAuth(), fake_retrieve, store, tracker, settings)  # type: ignore[arg-type]
+        await mgr.submit(make_ctx())
+
+        rec = store.get_record((100, 42))
+        assert rec is not None
+        assert rec.status == "failed"
+        assert rec.error_code == "authentication_failure"
+        assert attempts == 1
+        assert tracker.get_state("d1") == "failed"
+
+    asyncio.run(_test())

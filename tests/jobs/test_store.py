@@ -11,17 +11,23 @@ SHA_HEAD = "b" * 40
 
 def make_dummy_bundle() -> PullRequestBundle:
     ctx = PullRequestContext(
-        repo_id=1,
-        repo_full_name="org/repo",
-        pr_number=42,
+        delivery_id="d1",
+        installation_id=10,
+        owner="org",
+        repository="repo",
+        repository_id=1,
+        pull_number=42,
+        title="Test PR",
+        html_url="https://github.com/org/repo/pull/42",
         base_ref="main",
-        base_sha=SHA_BASE,
         head_ref="feat",
+        base_sha=SHA_BASE,
         head_sha=SHA_HEAD,
-        head_repo_full_name="org/repo",
-        head_repo_fork=False,
-        is_cross_repository=False,
         merge_base_sha=SHA_BASE,
+        state="open",
+        is_draft=False,
+        event_head_sha=SHA_HEAD,
+        superseded_event=False,
     )
     return PullRequestBundle(
         context=ctx,

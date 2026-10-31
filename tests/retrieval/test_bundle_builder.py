@@ -34,9 +34,11 @@ class FakeGithub:
 
 def test_bundle_builder_full_flow() -> None:
     repo = FakeRepo(
+        repo_id=1,
         pr=FakePullRequest(
             base_sha=SHA_BASE,
             head_sha=SHA_HEAD,
+            files=[],
         ),
         merge_base_sha=SHA_BASE,
     )
@@ -59,7 +61,7 @@ def test_bundle_builder_full_flow() -> None:
     )
 
     bundle = build_pull_request_bundle(gh, ctx, make_settings())
-    assert bundle.context.pr_number == 42
+    assert bundle.context.pull_number == 42
     assert bundle.context.base_sha == SHA_BASE
     assert bundle.context.head_sha == SHA_HEAD
     assert bundle.context.merge_base_sha == SHA_BASE

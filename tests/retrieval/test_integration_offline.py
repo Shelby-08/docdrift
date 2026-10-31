@@ -1,12 +1,12 @@
 import base64
 from typing import Any
-import pytest
 
 from docsentry.config import Settings
 from docsentry.models import PullRequestEventContext
 from docsentry.retrieval.bundle_builder import build_pull_request_bundle
 from tests.retrieval.fakes import (
     FakeContentFile,
+    FakeFile,
     FakeGitTree,
     FakeGitTreeElement,
     FakePullRequest,
@@ -37,7 +37,12 @@ class FakeGithubClient:
 
 def test_full_pipeline_offline_integration() -> None:
     repo = FakeRepo(
-        pr=FakePullRequest(base_sha=SHA_BASE, head_sha=SHA_HEAD),
+        repo_id=999,
+        pr=FakePullRequest(
+            base_sha=SHA_BASE,
+            head_sha=SHA_HEAD,
+            files=[FakeFile("docs/guide.md", status="added")],
+        ),
         merge_base_sha=SHA_BASE,
     )
 
@@ -71,8 +76,9 @@ def test_full_pipeline_offline_integration() -> None:
 
     bundle = build_pull_request_bundle(gh, event, make_settings())
 
-    assert bundle.context.repo_full_name == "my-org/my-repo"
-    assert bundle.context.pr_number == 7
+    assert bundle.context.owner == "my-org"
+    assert bundle.context.repository == "my-repo"
+    assert bundle.context.pull_number == 7
     assert bundle.context.merge_base_sha == SHA_BASE
     assert bundle.base_index.complete is True
     assert bundle.head_index.complete is True
