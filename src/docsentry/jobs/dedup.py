@@ -12,7 +12,9 @@ class DeliveryTracker:
         self._deliveries: OrderedDict[str, DeliveryState] = OrderedDict()
 
     def begin(self, delivery_id: str) -> bool:
-        """Return True if delivery is new or previously failed; False if in_progress/succeeded/superseded."""
+        """Return True if delivery is new or previously failed;
+        False if in_progress/succeeded/superseded.
+        """
         if not delivery_id:
             return True
 

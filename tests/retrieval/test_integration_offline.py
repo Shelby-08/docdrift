@@ -1,6 +1,5 @@
 import base64
 from typing import Any
-import pytest
 
 from docsentry.config import Settings
 from docsentry.models import PullRequestEventContext
