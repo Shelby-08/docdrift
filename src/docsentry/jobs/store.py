@@ -19,6 +19,9 @@ class JobRecord:
     attempts: int
     error_code: str | None = None
     finished_at: str | None = None
+    publish_status: str | None = None
+    publish_code: str | None = None
+    findings_count: int | None = None
 
 
 class BundleStore:
