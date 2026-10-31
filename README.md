@@ -1,26 +1,33 @@
-# DocDrift
+# DocSentry
 
-> Your code changed. Your docs didn't. We catch it.
+## Overview
+DocSentry is a GitHub App backend designed to detect documentation drift in Pull Requests.
+It receives webhooks, validates payloads, and prepares the context for analysis.
 
-DocDrift is a CI check that finds the documentation sentences a pull request just made wrong
-(renamed flags, changed defaults, changed parameters, removed features). It points to the
-exact sentence and the exact code change, and suggests a corrected sentence.
-A local open-weight model (**Qwen3.6 35B-A3B, served by llama.cpp**) judges each candidate sentence.
+## Current Stage
+**Stage 1: Backend Foundation**
+- Webhook ingestion
+- Signature verification
+- Payload validation
+- Logging
 
-Built by **Team OS-hit!** for Hacktoberfest 2026 Hack Day (Problem 05).
+## Setup
+1. Create a virtual environment: `python -m venv .venv`
+2. Install dependencies: `pip install -e ".[dev]"`
+3. Copy `.env.example` to `.env` and fill in the values.
 
-## Status
-Work in progress: project setup, licence, PR template and CI are in place.
-The detection pipeline lands in the next pull requests.
+## Environment Variables
+- `GITHUB_APP_ID`: Your GitHub App ID.
+- `GITHUB_PRIVATE_KEY`: Your RSA Private Key.
+- `GITHUB_WEBHOOK_SECRET`: Secret for webhook verification.
+- `PORT`: Port to run the server (default 3000).
 
-## Install (development)
+## Running
+Run the server:
 ```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate   |   Linux/macOS: source .venv/bin/activate
-pip install -e ".[test]"
-pytest
-docdrift --version
+python -m docsentry
 ```
 
-## Licence
+## License
 MIT, see [LICENSE](LICENSE).
+
