@@ -1,0 +1,6 @@
+{
+    "action": "synchronize",
+    "repository": { "id": 1, "name": "test-repo", "owner": { "login": "test-user" } },
+    "pull_request": { "number": 123, "title": "Test PR", "base": { "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, "head": { "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } },
+    "installation": { "id": 1 }
+}
