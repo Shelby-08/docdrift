@@ -29,7 +29,10 @@ Planned approach:
 
 | Model | Where it runs | What it does in the product | Why we chose it |
 |---|---|---|---|
-| **Qwen3.6 35B-A3B** (`qwen3.6:35b`, open-weight) | Locally via Ollama | Judges whether each candidate documentation sentence is still correct after a code change, explains why, and writes a corrected sentence | Open-weight and runs fully offline on our laptop; strong at reading code and text together; mixture-of-experts design (~3B active parameters) makes it fast enough on an 8 GB GPU + 32 GB RAM laptop |
+| **Qwen3.6 35B-A3B** (open-weight; GGUF `Qwen3.6-35B-A3B-UD-Q4_K_M`) | Locally via **llama.cpp** (`llama-server`, OpenAI-compatible API on `localhost:8080`) | Judges whether each candidate documentation sentence is still correct after a code change, explains why, and writes a corrected sentence | Open-weight and runs fully offline on our laptop; strong at reading code and text together; mixture-of-experts design (~3B active parameters) with experts kept in RAM makes it fast on an 8 GB GPU + 32 GB RAM laptop (measured ~38 tokens/s, ~3 s per judgement after warm-up) |
+
+> Update (PR 1): the first commit said "via Ollama". We run the same model through llama.cpp instead,
+> because the GGUF file was already set up and tuned for our GPU. The model itself is unchanged.
 
 ## AI coding assistants
 - Claude (via the Hermes agent) helps write code; every pull request names the assistants used.
