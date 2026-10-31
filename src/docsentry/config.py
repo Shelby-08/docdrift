@@ -24,6 +24,17 @@ class Settings(BaseSettings):
     max_job_attempts: int = Field(default=3, ge=1, le=10)
     max_concurrent_jobs: int = Field(default=1, ge=1, le=10)
 
+    # Stage 3 Intelligence Limits
+    analysis_max_source_files: int = Field(default=500, ge=1, le=5000)
+    analysis_max_doc_files: int = Field(default=200, ge=1, le=2000)
+    analysis_max_unchanged_source_files: int = Field(default=50, ge=0, le=500)
+    analysis_time_budget_seconds: int = Field(default=60, ge=1, le=600)
+    analysis_max_graph_depth: int = Field(default=3, ge=1, le=10)
+    analysis_max_graph_nodes: int = Field(default=2000, ge=10, le=20000)
+    analysis_max_candidates_per_claim: int = Field(default=5, ge=1, le=50)
+    analysis_include_full_entities: bool = Field(default=False)
+    ai_review_max_items: int = Field(default=50, ge=1, le=500)
+
     @field_validator("github_private_key", mode="before")
     @classmethod
     def decode_private_key(cls, v: object) -> object:

@@ -22,6 +22,7 @@ def create_app(
     log = logger or create_logger(settings.log_level)
     app = FastAPI(title="DocSentry")
 
+    active_handler: PullRequestHandler
     if handler is None:
         auth = GitHubAuthService(settings)
         store = BundleStore()

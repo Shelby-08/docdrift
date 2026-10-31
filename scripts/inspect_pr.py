@@ -7,11 +7,10 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 from typing import Any
 
-from docsentry.config import Settings, load_settings
+from docsentry.config import load_settings
 from docsentry.models import PullRequestEventContext
 from docsentry.retrieval.auth import GitHubAuthService
 from docsentry.retrieval.bundle_builder import build_pull_request_bundle
@@ -105,8 +104,24 @@ def make_offline_bundle() -> PullRequestBundle:
     base_idx = RepositoryFileIndex(
         commit_sha=sha_base,
         entries=[
-            RepositoryFileEntry(path="docs/arch.md", blob_sha=sha_blob, byte_size=23, category="doc"),
-            RepositoryFileEntry(path="src/core.py", blob_sha=sha_blob, byte_size=16, category="source"),
+            RepositoryFileEntry(
+                path="docs/arch.md",
+                type="blob",
+                mode="100644",
+                blob_sha=sha_blob,
+                commit_sha=sha_base,
+                size=23,
+                category="doc",
+            ),
+            RepositoryFileEntry(
+                path="src/core.py",
+                type="blob",
+                mode="100644",
+                blob_sha=sha_blob,
+                commit_sha=sha_base,
+                size=16,
+                category="source",
+            ),
         ],
         complete=True,
         incomplete_reasons=[],
@@ -115,8 +130,24 @@ def make_offline_bundle() -> PullRequestBundle:
     head_idx = RepositoryFileIndex(
         commit_sha=sha_head,
         entries=[
-            RepositoryFileEntry(path="docs/arch.md", blob_sha=sha_blob, byte_size=31, category="doc"),
-            RepositoryFileEntry(path="src/core.py", blob_sha=sha_blob, byte_size=23, category="source"),
+            RepositoryFileEntry(
+                path="docs/arch.md",
+                type="blob",
+                mode="100644",
+                blob_sha=sha_blob,
+                commit_sha=sha_head,
+                size=31,
+                category="doc",
+            ),
+            RepositoryFileEntry(
+                path="src/core.py",
+                type="blob",
+                mode="100644",
+                blob_sha=sha_blob,
+                commit_sha=sha_head,
+                size=23,
+                category="source",
+            ),
         ],
         complete=True,
         incomplete_reasons=[],
