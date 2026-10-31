@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     github_webhook_secret: SecretStr
     port: int = Field(default=3000, ge=1, le=65535)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    max_file_bytes: int = Field(default=1_000_000, ge=1, le=100_000_000)
+    max_snapshot_files: int = Field(default=200, ge=1, le=50_000)
+    max_total_snapshot_bytes: int = Field(default=10_000_000, ge=1, le=500_000_000)
+    max_tree_requests: int = Field(default=200, ge=1, le=5000)
+    github_api_timeout_seconds: int = Field(default=15, ge=1, le=300)
+    max_job_attempts: int = Field(default=3, ge=1, le=10)
+    max_concurrent_jobs: int = Field(default=1, ge=1, le=10)
 
     @field_validator("github_private_key", mode="before")
     @classmethod
