@@ -7,9 +7,9 @@ _TEST_FILE_NAMES = frozenset({"conftest.py"})
 _DOC_EXTENSIONS = frozenset({".md", ".markdown"})
 _UNSUPPORTED_DOC_EXTS = frozenset({".mdx", ".rst", ".adoc", ".asciidoc"})
 _PYTHON_EXTENSIONS = frozenset({".py"})
-_UNSUPPORTED_SOURCE_EXTS = frozenset({
-    ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java", ".c", ".cpp", ".rb", ".php"
-})
+_UNSUPPORTED_SOURCE_EXTS = frozenset(
+    {".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java", ".c", ".cpp", ".rb", ".php"}
+)
 
 
 def classify_file(path: str) -> FileClass:
