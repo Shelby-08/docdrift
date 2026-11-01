@@ -85,7 +85,14 @@ _R_INHERITED_DEFAULT = re.compile(
     re.IGNORECASE,
 )
 _R_LEAD_SUBJECT = re.compile(
-    r"^\s*(?:[-*+]\s+)?(?:`(?P<t>[-]{0,2}[A-Za-z_][\w.\-]*)`|(?P<u>[A-Za-z_][\w.]*))\s*(?::|\u2014|\u2013|\s-\s)"
+    r"^\s*(?:[-*+]\s+)?(?:`(?P<t>[-]{0,2}[A-Za-z_][\w.\-]*)`|(?P<u>[-]{0,2}[A-Za-z_][\w.]*))"
+    r"(?:\s*\([^)]*\))?\s*(?::|\u2014|\u2013|\s-\s)\s*"
+)
+_R_PAREN_DEFAULT = re.compile(
+    r"\(\s*(?:[^)]*?,\s*)?(?:the\s+)?default(?:s\s+to|:\s*|\s+is|\s*=\s*|\s+)\s*`?"
+    + _VALUE
+    + r"\s*\)",
+    re.IGNORECASE,
 )
 _R_NAME_DEFAULTS_TO = re.compile(
     r"(?<![`\w])(?P<name>" + _IDENT + r")\s+defaults?\s+to\s+`?" + _VALUE,
@@ -123,6 +130,8 @@ _NAME_HEADERS = {
     "parameter name", "option name", "setting name", "variable name", "argument name",
     "key name", "config", "config key", "config option", "configuration", "field", "property",
     "environment variable", "env var", "cli flag", "flag name", "arg", "attribute",
+    "options", "parameters", "keys", "settings", "variables", "arguments", "flags",
+    "fields", "properties", "args", "attributes", "configs",
 }  # fmt: skip
 _DEFAULT_HEADERS = {
     "default", "default value", "default_value", "defaults", "default setting", "default val",
@@ -290,7 +299,7 @@ def _statement_claims(b: _Builder, st: DocStatement, is_heading: bool) -> None:
         fn = m.group("fn")
         params = _params(m.group("args"))
         sig_spans.append(m.span())
-        if is_heading or not params:
+        if not params:
             b.add(
                 st, ClaimType.IDENTIFIER_REFERENCE, "ident_call_form", Certainty.HIGH,
                 subject=fn.split(".")[-1], original_text=st.text,
@@ -379,7 +388,7 @@ def _statement_claims(b: _Builder, st: DocStatement, is_heading: bool) -> None:
 
 
 def _table_claims(b: _Builder, table: DocTable, row_statements: dict[int, DocStatement]) -> None:
-    header = [h.strip().strip("`").lower() for h in table.header]
+    header = [h.strip().strip("`").rstrip(":").strip().lower() for h in table.header]
     name_col = next((i for i, h in enumerate(header) if h in _NAME_HEADERS), None)
     default_col = next((i for i, h in enumerate(header) if h in _DEFAULT_HEADERS), None)
     if name_col is None or default_col is None:
@@ -457,6 +466,18 @@ def extract_claims(doc: ParsedDocument) -> list[DocClaim]:
         _statement_claims(b, st, kind == "heading")
         if kind != "heading":
             subject = last_subject.get(st.block_id)
+            lead_m = _R_LEAD_SUBJECT.match(st.text)
+            lead = None
+            if lead_m:
+                cand = (lead_m.group("t") or lead_m.group("u") or "").lstrip("-")
+                if re.fullmatch(r"[A-Za-z_][\w.\-]*", cand):
+                    lead = cand
+                    last_subject[st.block_id] = lead
+            if not lead:
+                lead = _lead_subject(st.text)
+                if lead:
+                    last_subject[st.block_id] = lead
+
             m = _R_INHERITED_DEFAULT.match(st.text)
             if (
                 subject
@@ -472,9 +493,45 @@ def extract_claims(doc: ParsedDocument) -> list[DocClaim]:
                     st, ClaimType.CONFIGURATION_DEFAULT, "cfg_default_inherited", Certainty.MEDIUM,
                     subject=subject, value=v, unit=u,
                 )  # fmt: skip
-            lead = _lead_subject(st.text)
-            if lead:
-                last_subject[st.block_id] = lead
+
+            if (
+                lead
+                and lead_m
+                and not any(
+                    c.statement_id == st.statement_id
+                    and c.claim_type == ClaimType.CONFIGURATION_DEFAULT
+                    for c in b.claims
+                )
+            ):
+                rem = st.text[lead_m.end():]
+                m_direct = _R_INHERITED_DEFAULT.match(rem)
+                if m_direct:
+                    v, u = _value_of(m_direct)
+                    ticked = bool(lead_m.group("t"))
+                    b.add(
+                        st, ClaimType.CONFIGURATION_DEFAULT, "cfg_default_lead",
+                        Certainty.HIGH if ticked else Certainty.MEDIUM,
+                        subject=lead, value=v, unit=u,
+                    )  # fmt: skip
+
+            curr = lead or subject
+            if (
+                curr
+                and not any(
+                    c.statement_id == st.statement_id
+                    and c.claim_type == ClaimType.CONFIGURATION_DEFAULT
+                    for c in b.claims
+                )
+            ):
+                m_paren = _R_PAREN_DEFAULT.search(st.text)
+                if m_paren:
+                    v, u = _value_of(m_paren)
+                    ticked = f"`{curr}`" in st.text
+                    b.add(
+                        st, ClaimType.CONFIGURATION_DEFAULT, "cfg_default_paren",
+                        Certainty.HIGH if ticked else Certainty.MEDIUM,
+                        subject=curr, value=v, unit=u,
+                    )  # fmt: skip
     for table in doc.tables:
         _table_claims(b, table, row_statements)
     return sorted(b.claims, key=lambda c: (c.line, c.statement_id, c.extraction_method, c.claim_id))

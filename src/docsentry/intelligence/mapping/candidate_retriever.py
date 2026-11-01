@@ -22,7 +22,9 @@ def name_tokens(name: str) -> tuple[str, ...]:
 def symbol_from_text(text: str) -> str:
     """Strip backticks, call parens and trailing punctuation from a symbol-like text."""
     t = text.strip().strip("`").strip()
-    if t.endswith("()"):
+    if "(" in t and t.endswith(")"):
+        t = t.split("(", 1)[0].strip()
+    elif t.endswith("()"):
         t = t[:-2]
     return t.strip()
 
