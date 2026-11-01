@@ -17,10 +17,11 @@ Build a CI check that finds the documentation sentences a pull request just made
 exact sentence and the exact code change responsible, and suggests a correction.
 
 ## Project
-**DocSentry** (repository `docdrift`) – *Your code changed. Your docs didn't. We catch it.*
+**DocDrift** (repository `docdrift`; Python package `docsentry`) – *Your code changed. Your docs didn't. We catch it.*
 
-> Update: the first commit called the project "DocDrift" and described an early plan. The built
-> project is **DocSentry**, a GitHub App. The description below is what the code does today.
+> Update: the first commit described an early plan. The built project is **DocDrift**, a GitHub App
+> (its Python package is still called `docsentry`, an earlier working name). The description below is
+> what the code does today.
 
 How it works:
 1. A GitHub webhook for a pull request arrives (HMAC signature verified).
