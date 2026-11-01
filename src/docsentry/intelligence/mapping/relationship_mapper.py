@@ -173,8 +173,7 @@ def _forward_dependencies(
             if edge.kind not in _DEP_EDGES or not edge.resolved or edge.dst in visited:
                 continue
             if depth >= limits.max_graph_depth:
-                truncated = True
-                continue
+                continue  # depth is a design bound; only the node cap counts as truncation
             if len(visited) >= limits.max_graph_nodes:
                 return found, True
             visited.add(edge.dst)

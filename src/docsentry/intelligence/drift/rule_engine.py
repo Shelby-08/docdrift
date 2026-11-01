@@ -251,6 +251,10 @@ def _rule_r1(ctx: RuleContext) -> None:
         confirmed = rel.strength == Strength.STRONG and units_ok
         status = EvidenceStatus.CONFIRMED if confirmed else EvidenceStatus.POTENTIAL
         shown = vr.value
+        suggest: object = shown
+        if claim.unit and hint_label and claim.unit in UNIT_SECONDS:
+            converted = code_cmp / UNIT_SECONDS[claim.unit]
+            suggest = int(converted) if float(converted).is_integer() else round(converted, 6)
         if equal:
             ctx.add(
                 ConsistencyRecord(
@@ -278,7 +282,8 @@ def _rule_r1(ctx: RuleContext) -> None:
                     reasons=tuple(reasons),
                     evidence=evidence,
                     suggested_correction=(
-                        f"Update the documented value {claim.value}{unit_txt} to {shown}"
+                        f"Update the documented value {claim.value}{unit_txt} "
+                        f"to {suggest}{unit_txt}"
                         if confirmed
                         else None
                     ),
@@ -432,6 +437,7 @@ def _rule_r3_r4(ctx: RuleContext) -> None:
             not in (
                 ClaimType.CONFIGURATION_REFERENCE,
                 ClaimType.IDENTIFIER_REFERENCE,
+                ClaimType.API_SIGNATURE,
             )
             or not claim.subject
         ):
