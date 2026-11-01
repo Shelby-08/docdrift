@@ -47,7 +47,8 @@ _NUM = (
     r"(?:[eE][-+]?\d+)?)"
 )
 _UNIT = r"(?:\s*(?P<unit>milliseconds?|seconds?|secs?|minutes?|mins?|hours?|days?|ms|h|d|s)\b)?"
-_VALUE = _NUM + _UNIT
+# Units we cannot convert (weeks, months, years) must not leave a bare, wrong number behind.
+_VALUE = _NUM + r"(?!\d)" + _UNIT + r"(?!\s*(?:weeks?|months?|years?|fortnights?)\b)"
 _SUBJ_TICK = r"`(?P<tick>[A-Za-z_][\w.]*)`"
 _IDENT = r"[A-Za-z_]\w*"
 

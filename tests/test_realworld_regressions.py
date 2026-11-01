@@ -204,3 +204,15 @@ def test_replay_ai_flag_runs_advisory_review(
     s = FakeReviewer.settings  # type: ignore[attr-defined]
     assert s.ai_backend == "llama_cpp" and s.ollama_base_url == "http://127.0.0.1:8080"
     assert main([*args, "--ai-url", "http://example.com:8080"]) == 2
+
+
+def test_unconvertible_time_units_do_not_leave_a_bare_number() -> None:
+    for doc in (
+        "`max_age` defaults to 2 weeks.\n",
+        "- `max_age`: Session lifetime. Defaults to 2 weeks.\n",
+    ):
+        res = one(doc, "MAX_AGE = 600\n", "MAX_AGE = 700\n")
+        assert [c for c in res.claims if c.claim_type.value == "configuration_default"] == [], doc
+        assert res.findings == ()
+    ok = one("`max_age` defaults to 14 days.\n", "MAX_AGE = 14\n", "MAX_AGE = 15\n")
+    assert [c.value for c in ok.claims if c.claim_type.value == "configuration_default"] == [14]
