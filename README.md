@@ -1,11 +1,14 @@
-# DocSentry
+# DocDrift
 
 > Your code changed. Your docs didn't. We catch it.
 
-DocSentry is a GitHub App that checks every pull request for **documentation that the PR just made
+DocDrift is a GitHub App that checks every pull request for **documentation that the PR just made
 wrong**: a changed default, a removed or renamed parameter, a renamed config key, a deleted
 function. It reports the exact documentation sentence, the exact code that contradicts it, and
 links to both. It never edits your docs and never blocks a merge.
+
+> Naming: the project is **DocDrift**. Its Python package, CLI module and Check Run label are still
+> called `docsentry` (an earlier working name), so commands below use `docsentry`.
 
 Built by **Team OS-hit!** for Hacktoberfest 2026 Hack Day, **Problem 05: Automated Documentation
 Drift Detection**.
