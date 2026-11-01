@@ -149,11 +149,12 @@ def main() -> None:
 
     settings = load_settings()
     client = GitHubAuthService(settings).client_for_installation(args.installation_id)
+    repo = client.get_repo(f"{args.owner}/{args.repo}")
     event = PullRequestEventContext(
         action="synchronize",
         owner=args.owner,
         repo=args.repo,
-        repo_id=0,
+        repo_id=int(repo.id),  # the bundle builder verifies the repository id
         pr_number=args.pr,
         installation_id=args.installation_id,
         base_sha="0" * 40,
