@@ -216,3 +216,66 @@ def test_unconvertible_time_units_do_not_leave_a_bare_number() -> None:
         assert res.findings == ()
     ok = one("`max_age` defaults to 14 days.\n", "MAX_AGE = 14\n", "MAX_AGE = 15\n")
     assert [c.value for c in ok.claims if c.claim_type.value == "configuration_default"] == [14]
+
+
+def test_direct_bullet_defaults_without_middle_sentence() -> None:
+    doc = "# Options\n\n- `MAX_RETRIES`: Defaults to 5.\n- `TIMEOUT`: Defaults to 30.\n"
+    res = one(doc, "MAX_RETRIES = 5\nTIMEOUT = 30\n", "MAX_RETRIES = 10\nTIMEOUT = 60\n")
+    f = new(res)
+    assert len(f) == 2
+    assert {x.rule_id for x in f} == {"R1"}
+    ctrl = one(doc, "MAX_RETRIES = 5\nTIMEOUT = 30\n", "MAX_RETRIES = 5\nTIMEOUT = 30\n")
+    assert ctrl.findings == ()
+
+
+def test_plural_table_headers() -> None:
+    doc = "| Parameters | Default |\n|---|---|\n| `port` | 8080 |\n| `timeout` | 30 |\n"
+    res = one(doc, "PORT = 8080\nTIMEOUT = 30\n", "PORT = 9090\nTIMEOUT = 60\n")
+    assert len(new(res)) == 2
+    ctrl = one(doc, "PORT = 8080\nTIMEOUT = 30\n", "PORT = 8080\nTIMEOUT = 30\n")
+    assert ctrl.findings == ()
+
+
+def test_heading_signature_parameter_removal() -> None:
+    doc = "## `connect(host, port, timeout)`\nConnect to server.\n"
+    res = one(
+        doc,
+        "def connect(host, port, timeout=30):\n    pass\n",
+        "def connect(host, port):\n    pass\n",
+    )
+    f = new(res)
+    assert len(f) == 1
+    assert f[0].rule_id == "R2"
+    assert "timeout" in f[0].description
+    ctrl = one(
+        doc,
+        "def connect(host, port, timeout=30):\n    pass\n",
+        "def connect(host, port, timeout=30):\n    pass\n",
+    )
+    assert ctrl.findings == ()
+
+
+def test_typed_parameters_and_parenthetical_defaults() -> None:
+    doc = (
+        "- `timeout` (int): Defaults to 30.\n"
+        "- `retries` (default: 3): Number of attempts.\n"
+        "- `cache_size` (int, default: 100): Size.\n"
+    )
+    base = "TIMEOUT = 30\nRETRIES = 3\nCACHE_SIZE = 100\n"
+    head = "TIMEOUT = 60\nRETRIES = 5\nCACHE_SIZE = 200\n"
+    res = one(doc, base, head)
+    assert len(new(res)) == 3
+    ctrl = one(doc, base, base)
+    assert ctrl.findings == ()
+
+
+def test_heading_function_with_parameter_default_mapping() -> None:
+    doc = "# Client\n\n## `connect(host, port, timeout=30)`\n\n- `timeout`: Defaults to 30.\n"
+    base = "def connect(host, port, timeout=30):\n    pass\n"
+    head = "def connect(host, port, timeout=60):\n    pass\n"
+    res = one(doc, base, head)
+    f = new(res)
+    assert len(f) == 1
+    assert f[0].rule_id == "R1"
+    assert f[0].evidence_status.value == "confirmed"
+
