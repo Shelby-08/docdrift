@@ -4,7 +4,6 @@ import uvicorn
 
 from docsentry.app import create_app
 from docsentry.config import ConfigError, load_settings
-from docsentry.github.handler import make_default_handler
 from docsentry.utils.logger import create_logger
 
 
@@ -16,8 +15,8 @@ def main() -> None:
         sys.exit(1)
 
     logger = create_logger(settings.log_level)
-    handler = make_default_handler(logger)
-    app = create_app(settings, handler, logger)
+    # handler=None wires the real pipeline (retrieval -> analysis -> Check Run).
+    app = create_app(settings, None, logger)
 
     uvicorn.run(app, host="127.0.0.1", port=settings.port)
 
